@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MultiSave Scraper</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #f4f7fb; color: #172033; }
+    main { width: min(900px, calc(100% - 32px)); margin: 48px auto; }
+    .card { background: #fff; border: 1px solid #e1e7f0; border-radius: 16px; padding: 28px; box-shadow: 0 10px 30px rgba(30, 55, 90, .08); }
+    h1 { margin: 0 0 8px; font-size: clamp(1.7rem, 4vw, 2.4rem); }
+    .intro { margin: 0 0 24px; color: #5d6b80; }
+    form { display: grid; gap: 14px; }
+    label { font-weight: 650; }
+    input[type="url"] { width: 100%; padding: 13px 14px; border: 1px solid #cbd5e1; border-radius: 9px; font: inherit; }
+    input[type="url"]:focus { outline: 3px solid rgba(54, 114, 220, .18); border-color: #3672dc; }
+    .options { display: flex; align-items: center; gap: 8px; color: #4b5b70; }
+    button { width: fit-content; padding: 12px 20px; border: 0; border-radius: 9px; background: #2563eb; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { opacity: .65; cursor: wait; }
+    #status { min-height: 24px; margin: 22px 0 8px; color: #4b5b70; }
+    #status.error { color: #b42318; }
+    pre { margin: 0; max-height: 520px; overflow: auto; padding: 18px; border-radius: 10px; background: #101827; color: #dbeafe; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+    .hint { margin-top: 16px; font-size: .9rem; color: #718096; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>MultiSave Scraper</h1>
+      <p class="intro">Inspect the metadata, headings, links, and images on multisave.freedev.app.</p>
+
+      <form id="scrape-form">
+        <div>
+          <label for="url">Page URL</label>
+          <input id="url" name="url" type="url" value="https://multisave.freedev.app/" required>
+        </div>
+
+        <label class="options">
+          <input id="crawl" name="crawl" type="checkbox">
+          Crawl up to 8 same-site pages
+        </label>
+
+        <button id="submit" type="submit">Scrape page</button>
+      </form>
+
+      <div id="status" role="status"></div>
+      <pre id="result">Results will appear here.</pre>
+      <p class="hint">Only HTTPS URLs on multisave.freedev.app are accepted by the API.</p>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('scrape-form');
+    const button = document.getElementById('submit');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      button.disabled = true;
+      status.className = '';
+      status.textContent = 'Scraping...';
+      result.textContent = '';
+
+      const params = new URLSearchParams({ url: document.getElementById('url').value });
+      if (document.getElementById('crawl').checked) params.set('crawl', 'true');
+
+      try {
+        const response = await fetch(`/api/scrape?${params.toString()}`);
+        const data = await response.json();
+        result.textContent = JSON.stringify(data, null, 2);
+        status.textContent = response.ok ? 'Scrape completed.' : 'The API returned an error.';
+        if (!response.ok) status.className = 'error';
+      } catch (error) {
+        status.textContent = `Request failed: ${error.message}`;
+        status.className = 'error';
+        result.textContent = 'Make sure the API is running and this page is served by the same Render service.';
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
