@@ -29,12 +29,13 @@ function validateUrl(value) {
 function getMode(url) {
   const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
 
+  if (["youtube.com", "m.youtube.com", "youtu.be"].includes(host)) return "youtube-mp4";
   if (["spotify.com", "open.spotify.com"].includes(host)) return "spotify";
   if (["instagram.com", "instagr.am"].includes(host)) return "instagram";
   if (host === "threads.net") return "threads";
   if (["tiktok.com", "vm.tiktok.com", "vt.tiktok.com"].includes(host)) return "tiktok";
 
-  // Facebook, YouTube, X, Pinterest, Snapchat, CapCut, and Likee use
+  // Facebook, X, Pinterest, Snapchat, CapCut, and Likee use
   // MultiSave's generic request path in the public frontend.
   return "generic";
 }
@@ -68,7 +69,7 @@ async function scrape(url, options = {}) {
 
     if (!payload || !payload.result) {
       throw new Error(
-        payload?.message || "MultiSave did not return a downloadable media URL."
+        payload?.message || payload?.error || "MultiSave did not return a downloadable media URL."
       );
     }
 
@@ -96,7 +97,7 @@ async function scrape(url, options = {}) {
   } catch (error) {
     return {
       status: false,
-      message: error.response?.data?.message || error.message || "MultiSave request failed."
+      message: error.response?.data?.message || error.response?.data?.error || error.message || "MultiSave request failed."
     };
   }
 }
