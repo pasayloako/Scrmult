@@ -43,19 +43,20 @@ function getMode(url) {
 async function scrape(url, options = {}) {
   try {
     const targetUrl = validateUrl(url);
-    const mode = options.mode || getMode(targetUrl);
-
-    const response = await axios.post(
+    const response = await axios.get(
       MULTISAVE_API,
-      { url: targetUrl, mode },
       {
+        params: {
+          url: targetUrl
+        },
         timeout: REQUEST_TIMEOUT_MS,
         headers: {
           Accept: "application/json",
-          "Content-Type": "application/json",
-          Origin: "https://multisave.freedev.app",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
           Referer: "https://multisave.freedev.app/",
-          "User-Agent": "Mozilla/5.0 MultiSaveClient/1.0"
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36"
         },
         validateStatus: () => true
       }
@@ -67,13 +68,22 @@ async function scrape(url, options = {}) {
       throw new Error(`MultiSave returned HTTP ${response.status}.`);
     }
 
-    if (!payload || !payload.result) {
+    const mediaUrl = typeof payload?.result === "string"
+      ? payload.result
+      : payload?.result?.url ||
+        payload?.downloadUrl ||
+        payload?.download_url ||
+        payload?.url ||
+        payload?.data?.url ||
+        payload?.data?.downloadUrl;
+
+    if (!mediaUrl) {
       throw new Error(
         payload?.message || payload?.error || "MultiSave did not return a downloadable media URL."
       );
     }
 
-    if (typeof payload.result !== "string" || !/^https?:\/\//i.test(payload.result)) {
+    if (!/^https?:\/\//i.test(mediaUrl)) {
       throw new Error("MultiSave returned an invalid media URL.");
     }
 
@@ -82,13 +92,15 @@ async function scrape(url, options = {}) {
       result: {
         title: typeof payload.videoTitle === "string" && payload.videoTitle.trim()
           ? payload.videoTitle.trim()
+          : typeof payload.title === "string" && payload.title.trim()
+            ? payload.title.trim()
           : "Downloaded media",
         author: typeof payload.author === "string" ? payload.author.trim() : "",
         thumbnail: typeof payload.imageUrl === "string" ? payload.imageUrl : "",
         type: "video",
         downloads: [
           {
-            url: payload.result,
+            url: mediaUrl,
             type: "video"
           }
         ]
@@ -102,4 +114,4 @@ async function scrape(url, options = {}) {
   }
 }
 
-module.exports = { scrape };
+module.exports = { scrape }
